@@ -2,9 +2,11 @@ import streamlit as st
 from Data_Analysis import load_and_clean_data, get_salary_stats, plot_salary_distribution, perform_kmeans, perform_regression
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 
+current_dir = Path(__file__).parent
 # File path for the dataset
-file_path = '/Software Engineer Salaries.csv'
+file_path = current_dir / "Software Engineer Salaries.csv"
 
 # Load and clean data
 data_cleaned = load_and_clean_data(file_path)
@@ -38,7 +40,7 @@ st.sidebar.info(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Developed by [Your Name]")
+st.sidebar.caption("Developed by Pardillo Boys")
 
 # Styling
 st.markdown(
@@ -68,56 +70,154 @@ if selected_section == "Overview":
 
 elif selected_section == "Data Exploration and Preparation":
     st.subheader('Data Exploration and Preparation')
-    st.markdown("### Data Cleaning Steps")
-    st.markdown("- Removed rows with missing or invalid salary data.")
-    st.markdown("- Extracted minimum, maximum, and average salary values from salary ranges.")
     
+    # Data Cleaning Steps
+    st.markdown("### Data Cleaning Steps")
+    st.markdown("- **Removed rows with missing or invalid salary data.**")
+    st.markdown("- **Extracted minimum, maximum, and average salary values from salary ranges.**")
+    
+    # Salary Distribution Plot
     st.markdown("### Salary Distribution")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.histplot(data_cleaned['Avg Salary'], kde=True, bins=30, color='blue', ax=ax)
-    ax.set_title('Salary Distribution', color='white')
-    ax.set_xlabel('Average Salary', color='white')
-    ax.set_ylabel('Frequency', color='white')
-    ax.tick_params(colors='white')
+
+    # Create a matplotlib figure and axis
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Plot histogram of Average Salary using seaborn
+    sns.histplot(
+        data=data_cleaned,
+        x='Avg Salary',
+        kde=True,  # Include kernel density estimate
+        bins=30,
+        color='skyblue',
+        edgecolor='black',
+        ax=ax
+    )
+
+    # Add labels and title
+    ax.set_title('Distribution of Average Salaries for Software Engineers', fontsize=16)
+    ax.set_xlabel('Average Salary (USD)', fontsize=12)
+    ax.set_ylabel('Number of Job Listings', fontsize=12)
+
+    # Customize tick parameters and grid
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.grid(axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
+
+    # Display the plot in Streamlit
     st.pyplot(fig)
+
+    # Add interpretation and insights
+    st.markdown(
+        """
+        **Interpretation:**
+
+        - The histogram illustrates the distribution of average salaries for software engineering positions.
+        - The x-axis represents the average salary in USD.
+        - The y-axis shows the number of job listings corresponding to each salary range.
+        - The overlaid KDE (Kernel Density Estimate) curve provides a smoothed estimate of the salary distribution.
+        - Peaks in the histogram indicate salary ranges with a higher concentration of job listings.
+        """
+    )
+
 
 elif selected_section == "Analysis and Insights":
     st.subheader('Analysis and Insights')
+    
+    # Clustering Analysis Section
     st.markdown("### Clustering Analysis")
-    data_cleaned, kmeans_model = perform_kmeans(data_cleaned)
-    cluster_selected = st.selectbox("Select Cluster", options=[0, 1, 2], format_func=lambda x: f"Cluster {x}")
-    filtered_data = data_cleaned[data_cleaned['Cluster'] == cluster_selected]
-    st.write(f"### Data for Cluster {cluster_selected}")
-    st.write(filtered_data)
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(
-        x=filtered_data['Avg Salary'], y=filtered_data['Company Score'], hue=filtered_data['Cluster'], palette='viridis', ax=ax
+    st.markdown(
+        """
+        Clustering analysis is performed to group companies based on the average salaries they offer.
+        This helps identify patterns in salary ranges and company types.
+        """
     )
-    ax.set_title(f'Cluster {cluster_selected}: Salary vs Company Score', color='white')
-    ax.set_xlabel('Average Salary', color='white')
-    ax.set_ylabel('Company Score', color='white')
-    ax.tick_params(colors='white')
+
+    # Perform K-Means clustering
+    data_cleaned, kmeans_model = perform_kmeans(data_cleaned)
+    
+    # Dropdown to select a cluster
+    cluster_selected = st.selectbox(
+        "Select a Cluster to Explore:", 
+        options=[0, 1, 2], 
+        format_func=lambda x: f"Cluster {x}"
+    )
+
+    # Filter data for the selected cluster
+    filtered_data = data_cleaned[data_cleaned['Cluster'] == cluster_selected]
+    
+    # Display filtered data for the selected cluster
+    st.write(f"### Data for Cluster {cluster_selected}")
+    st.dataframe(filtered_data[['Company', 'Job Title', 'Avg Salary', 'Company Score', 'Location']])
+
+    # Visualization: Scatter plot for selected cluster
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.scatterplot(
+        data=filtered_data,
+        x='Avg Salary',
+        y='Company Score',
+        hue='Cluster',
+        palette='viridis',
+        ax=ax,
+        s=100
+    )
+    ax.set_title(f'Cluster {cluster_selected}: Salary vs Company Score', fontsize=16)
+    ax.set_xlabel('Average Salary (USD)', fontsize=12)
+    ax.set_ylabel('Company Score', fontsize=12)
+    ax.grid(axis='both', linestyle='--', linewidth=0.5, alpha=0.7)
     st.pyplot(fig)
 
+    # Explanation of clustering insights
+    st.markdown(
+        f"""
+        **Cluster {cluster_selected} Insights:**
+        - The scatter plot shows the relationship between company scores and average salaries for this cluster.
+        - Companies in this cluster offer average salaries typically in the range of **${filtered_data['Avg Salary'].min():,.0f}** to **${filtered_data['Avg Salary'].max():,.0f}**.
+        - This cluster can represent companies with similar compensation structures.
+        """
+    )
+    
+    # Regression Analysis Section
     st.markdown("### Regression Analysis")
-    regression_model = perform_regression(data_cleaned)
-    st.write('Regression Coefficients:', regression_model.coef_)
-    st.write('Regression Intercept:', regression_model.intercept_)
+    st.markdown(
+        """
+        Regression analysis explores the relationship between company scores and average salaries. 
+        A positive slope in the regression line indicates that companies with higher scores 
+        tend to offer higher average salaries.
+        """
+    )
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Perform regression analysis
+    regression_model = perform_regression(data_cleaned)
+
+    # Display regression coefficients
+    st.write('### Regression Model Details:')
+    st.write(f"- **Coefficient (Impact of Company Score):** {regression_model.coef_[0]:.2f}")
+    st.write(f"- **Intercept:** {regression_model.intercept_:.2f}")
+
+    # Visualization: Regression plot
+    fig, ax = plt.subplots(figsize=(12, 6))
     sns.regplot(
-        x=data_cleaned['Company Score'],
-        y=data_cleaned['Avg Salary'],
-        scatter_kws={'alpha':0.6},
-        line_kws={'color':'red'},
+        data=data_cleaned,
+        x='Company Score',
+        y='Avg Salary',
+        scatter_kws={'alpha': 0.6},
+        line_kws={'color': 'red'},
         ax=ax
     )
-    ax.set_title('Regression Analysis: Salary vs Company Score', color='white')
-    ax.set_xlabel('Company Score', color='white')
-    ax.set_ylabel('Average Salary', color='white')
-    ax.tick_params(colors='white')
+    ax.set_title('Regression Analysis: Salary vs Company Score', fontsize=16)
+    ax.set_xlabel('Company Score', fontsize=12)
+    ax.set_ylabel('Average Salary (USD)', fontsize=12)
+    ax.grid(axis='both', linestyle='--', linewidth=0.5, alpha=0.7)
     st.pyplot(fig)
+
+    # Explanation of regression insights
+    st.markdown(
+        """
+        **Regression Analysis Insights:**
+        - The regression line represents the trend between company scores and average salaries.
+        - A positive slope suggests that higher company scores are generally associated with higher salaries.
+        - Outliers may indicate companies offering salaries that deviate from the trend, potentially due to location or company size.
+        """
+    )
 
 elif selected_section == "Conclusions and Recommendations":
     st.subheader('Conclusions and Recommendations')
